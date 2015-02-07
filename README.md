@@ -14,3 +14,32 @@ dependencies：
     #. Boost.Asio
     #. Boost.Serialization
 
+example:
+=============
+
+typedef Message::tag<struct N0> Msg_Echo;
+typedef Message::tag<struct N1> Msg_Time;
+typedef Message::tag<struct N2> Msg_File;
+typedef Message::Pair< Message::Request<>, Message::Response<> > ___reserved___;
+
+using Message::Request;
+using Message::Response;
+
+typedef Message::Table<
+    ___reserved___
+  , ___reserved___
+  , ___reserved___
+
+  , Message::Pair< Request<Msg_Echo, UInt, UInt>, Response<UInt, UInt> >
+  , Message::Pair< Request<Msg_Echo, UInt, UInt>, Response<UInt, UInt> >
+  , Message::Pair< Request<Msg_Echo, UInt, std::string>, Response<UInt, std::string> >
+  , ___reserved___
+  , ___reserved___
+  , ___reserved___
+
+  , Message::Pair< Request<Msg_Time>, Response<std::string> >
+  , ___reserved___
+  , Message::Pair< Request<Msg_File,std::string>, Response<int,std::string> >
+  , ___reserved___
+> Message_table;
+
