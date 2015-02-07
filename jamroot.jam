@@ -1,0 +1,108 @@
+import os ;
+
+path-constant TOP : . ;
+path-constant HOME : [ os.environ HOME ] ;
+path-constant BOOST_ROOT : /opt/boost ;
+
+use-project /boost : $(BOOST_ROOT) ;
+
+project
+    : requirements
+        # <toolset>gcc:<cxxflags>-std=c++11
+        <toolset>gcc:<cxxflags>"-Wno-unused-local-typedefs"
+        <toolset>clang:<cxxflags>"-stdlib=libc++"
+        <toolset>clang:<linkflags>"-stdlib=libc++"
+        <threading>multi
+        <include>.
+        <include>$(BOOST_ROOT)
+        # <include>include
+        # <variant>debug:<cxxflags>"-rdynamic"
+        # <variant>debug:<location>"bin/debug"
+        # <define>LIBICONV_PLUG
+        # <define>BOOST_SPIRIT_UNICODE=1
+        # <define>IOS_DEBUG
+    : default-build release
+    ;
+
+#local magick_cxxflags = [ SHELL "Magick++-config --cxxflags |tr '\n' ' '" ] ;
+#local magick_linkflags = [ SHELL "Magick++-config --ldflags |tr '\n' ' '" ] ;
+#alias magick : : : : <linkflags>$(magick_linkflags) <cxxflags>$(magick_cxxflags) ;
+
+lib ssl crypto : : <search>/usr/lib64 <link>shared ;
+# lib curl : : <link>shared ;
+
+# lib hiredis ;
+# lib iconv : : <name>iconv <search>/usr/local/lib ;
+# lib jpeg png ;
+# lib xml2 bz2 z m ;
+# lib lcms : : <name>lcms ;
+# lib tiff : : <name>tiff ;
+# lib freetype : : <name>freetype ; 
+# lib jasper : : <name>jasper ;
+# # lib png12 : : <name>png12 ;
+# lib Xext : : <name>Xext ;
+# lib SM : : <name>SM ;
+# lib ICE : : <name>ICE ;
+# lib X11 : : <name>X11 ;
+# lib gomp : : <name>gomp ;
+
+lib our
+    :
+        myerror.cpp log.cpp util.cpp
+        json2.cpp rapidjson//json
+        # dbc.cpp ../mysql//client ../redis//client
+        /boost//system
+        /boost//filesystem
+        # /boost//regex /boost//random
+        /boost//thread
+        /boost//timer
+        /boost//program_options
+        /boost//serialization
+   : <link>static
+     # <cflags>-pg <linkflags>-pg
+     # <include>urdl-0.1/include
+   ;
+
+exe node1
+    : node1.cpp buildinfo.cpp our ssl
+    ;
+
+install usr/local/bin : node1 ;
+
+actions buildinfo
+{
+    Revision=0
+    if which svn >/dev/null 2>&1 ; then
+        Revision=`svn info |grep '^Rev'`
+    fi
+
+    cat > $(<) <<_EoF
+#define BUILD_REV "$Revision"
+#define BUILD_DATE "`date`"
+#define BUILD_USER "$USER"
+
+#include "log.h"
+void print_buildinfo(int bg) {
+    //std::cout << BUILD_REV << "\n";
+    //std::cout << BUILD_DATE <<" "<< BUILD_USER << "\n";
+    //if (bg)
+    {
+        LOG << BUILD_REV;
+        LOG << BUILD_DATE << BUILD_USER;
+    }
+}
+_EoF
+}
+
+make buildinfo.cpp : our : @buildinfo ;
+
+# lib smsapi : wrapsms.cpp libEUCPCommC//libEUCPCommC.a : <link>static ;
+
+# make proto/message.pb.cc : proto/message.proto : @protoc ;
+# 
+# actions protoc
+# {
+#     protoc $(>) --cpp_out=.
+# }
+# lib protobuf : : <name>protobuf <search>/usr/lib : : <include>/usr/include ;
+
