@@ -91,7 +91,7 @@ struct Client : agent_def<Client,Message_table>, singleton<Client>
     Client(boost::asio::io_service& io_s, ip::address ipa, unsigned short port)
         : agent_def<Client,Message_table>(boost::ref(io_s), ipa, port)
     {
-        LOG << ipa << port;
+        // LOG << ipa << port;
     }
 };
 
@@ -125,7 +125,7 @@ static tcp::endpoint make_endpoint(char const* host, char const* port)
 static void handle_push_accept(Acceptor* a, boost::system::error_code ec)
 {
     if (ec) {
-        LOG << ec << ec.message();
+        //LOG << ec << ec.message();
         return;
     }
 
