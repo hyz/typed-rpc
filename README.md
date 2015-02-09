@@ -4,19 +4,23 @@ tcp socket request-response通信高级抽象，可类比RPC。
 
 features:
 =========
-    #. 表格描述通信协议格式
-    #. 数据支持c++任何类型(被Boost.Serialization支持)
-    #. 易用
+    * 表格描述通信协议格式
+    * 数据支持c++任何类型(被Boost.Serialization支持)
+    * 易用
 
 dependencies：
 =============
-    #. c++11 meta-programming
-    #. Boost.Asio
-    #. Boost.Serialization
+    * c++11 meta-programming
+    * Boost.Asio
+    * Boost.Serialization
+    * Boost.Pool
+    * Boost.Intrusive
+    * Boost.Interprocess
 
 example:
 =============
 
+'''c++
 typedef Message::tag<struct N0> Msg_Echo;
 typedef Message::tag<struct N1> Msg_Time;
 typedef Message::tag<struct N2> Msg_File;
@@ -42,4 +46,6 @@ typedef Message::Table<
   , Message::Pair< Request<Msg_File,std::string>, Response<int,std::string> >
   , ___reserved___
 > Message_table;
+
+'''
 
