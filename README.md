@@ -20,7 +20,7 @@ dependencies：
 example:
 =============
 
-'''c++
+```c++
 typedef Message::tag<struct N0> Msg_Echo;
 typedef Message::tag<struct N1> Msg_Time;
 typedef Message::tag<struct N2> Msg_File;
@@ -47,5 +47,5 @@ typedef Message::Table<
   , ___reserved___
 > Message_table;
 
-'''
+```
 
