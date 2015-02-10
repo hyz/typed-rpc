@@ -1,15 +1,13 @@
 # cpp-remote-messaging
 
-tcp socket request-response通信高级抽象，可类比RPC。
-no protocol required, transfer native cpp datastructs, such as list, map etc.
-network transparent.
-simple, single header only file.
+async tcp request/response client & server, RPC-like.
 
 features:
 =========
-    * 表格描述通信协议格式
-    * 数据支持c++任何类型(被Boost.Serialization支持)
-    * 易用
+    * no protocol required, transfer native cpp datastructs, such as list, map etc.
+    * table declared exchange data
+    * network transparent.
+    * simple, single header only file.
 
 dependencies：
 =============
@@ -20,6 +18,7 @@ dependencies：
     * Boost.Intrusive
     * Boost.Interprocess
     * Boost.MSM
+    * ...
 
 example:
 =============
