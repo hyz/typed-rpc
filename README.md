@@ -1,6 +1,9 @@
-# adv-async-tcp-message-cpp11
+# cpp-remote-messaging
 
 tcp socket request-response通信高级抽象，可类比RPC。
+no protocol
+network transparent
+transfer native cpp datastructs, such as list, map etc.
 
 features:
 =========
