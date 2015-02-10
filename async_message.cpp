@@ -50,6 +50,16 @@ namespace intrusive = boost::intrusive;
 
 typedef unsigned int UInt;
 
+struct _Logger {
+    template <typename T> _Logger& operator<<(T&& t) const {
+        std::clog << t <<" ";
+        return *const_cast<_Logger*>(this);
+    }
+    ~_Logger() { std::clog <<"\n"; }
+    _Logger(int line, char const*) {}
+};
+#define LOG _Logger(__LINE__,__FILE__)
+
 inline boost::asio::mutable_buffers_1 as_buffer(uint32_t& n)
 {
     return boost::asio::mutable_buffers_1(static_cast<void*>(&n), sizeof(uint32_t));
@@ -353,7 +363,7 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
                 boost::system::error_code ec;
                 m.sock_.connect(m.endpx, ec);
                 if (ec) {
-                    //LOG <<"connect"<< ec << ec.message();
+                    LOG <<"connect"<< ec << ec.message();
                     m.sock_.close(ec); // BOOST_ASSERT(!m.sock_.is_open());
                 m.process_event(Ev_network_error());
                     return;
@@ -372,7 +382,7 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
         {
             if (ec) {
                 BOOST_ASSERT(!m->sock_.is_open());
-                //LOG << ec << ec.message();
+                LOG << ec << ec.message();
                 m->process_event(Ev_network_error());
                 return;
             }
@@ -494,7 +504,7 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
     static void _handle_write_error(boost::system::error_code ec, query_ptr ptr, int lno)
     {
         auto& m = Derived::instance();
-        //LOG << ec << ec.message() << lno;
+        LOG << ec << ec.message() << lno;
         m._close(ptr->sock);
         m.querys.push_back(*ptr); // m.querys.splice(m.querys.begin(), m.querys, m.querys.iterator_to(*ptr));
         m.process_event(Ev_network_error());
@@ -761,7 +771,7 @@ struct service_ : msm::front::state_machine_def<service_<Handle,Table>>
         {
             auto& m = *ptr; // ptr->handle_read(*ptr, ec, bytes_transferred);
             if (ec) {
-                //LOG << ec << ec.message();
+                LOG << ec << ec.message();
                 m.fire_event(Ev_close());
                 return;
             }
@@ -774,7 +784,7 @@ struct service_ : msm::front::state_machine_def<service_<Handle,Table>>
         {
             auto& m = *ptr; // ptr->handle_read(*ptr, ec, bytes_transferred);
             if (ec) {
-                //LOG << ec << ec.message();
+                LOG << ec << ec.message();
                 m.fire_event(Ev_close());
                 return;
             }
@@ -990,7 +1000,7 @@ struct Acceptor : boost::noncopyable
         : socket(io_s)
         , acceptor_(io_s, endpx, true)
     {
-        //LOG << endpx;
+        LOG << endpx;
 
         //acceptor_.open(endpx.protocol());
         acceptor_.set_option(tcp::acceptor::reuse_address(true));
