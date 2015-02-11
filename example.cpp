@@ -95,13 +95,6 @@ static void _ensure(bool y, T&&... t)
 }
 #define ENSURE(...) _ensure(__VA_ARGS__,__LINE__)
 
-static ip::tcp::endpoint make_endpoint(char const* host, char const* port)
-{
-    if (host)
-        return ip::tcp::endpoint(ip::address::from_string(host), std::stoi(port));
-    return ip::tcp::endpoint(ip::tcp::v4(), std::stoi(port));
-}
-
 static void handle_push_accept(Acceptor* a, boost::system::error_code ec)
 {
     if (!_SUCCESS(ec)) {
@@ -203,6 +196,13 @@ void download_file(ip::address host, unsigned short port, std::string filename)
     io_s.run();
 }
 
+static ip::tcp::endpoint make_endpoint(char const* host, char const* port)
+{
+    if (host)
+        return ip::tcp::endpoint(ip::address::from_string(host), std::stoi(port));
+    return ip::tcp::endpoint(ip::tcp::v4(), std::stoi(port));
+}
+
 int main(int ac, char *const av[])
 {
     if (ac < 3) {
@@ -211,7 +211,7 @@ int main(int ac, char *const av[])
     boost::timer::auto_cpu_timer tw;
 
     if (av[1] == std::string("-l")) {
-        //: a.out -l <port>
+        //$ bin/example -l <port>
         return server_main(make_endpoint(0, av[2]));
     }
 
@@ -219,17 +219,17 @@ int main(int ac, char *const av[])
     auto port = std::stoi(av[2]);
 
     if (ac >= 4 && av[3] == std::string("-t")) {
-        //: a.out <host> <port> -t
+        //$ bin/example <host> <port> -t
         std::cout<< get_time(host, port) <<"\n";
         return 0;
     }
     if (ac >= 5 && av[3] == std::string("-f")) {
-        //: a.out <host> <port> -f <filename>
+        //$ bin/example <host> <port> -f <filename>
         download_file(host, port, av[4]);
         return 0;
     }
 
-        //: a.out <host> <port> [n-repeat]
+        //$ bin/example <host> <port> [N-repeat]
     return client_main(std::stoi(ac>3 ? av[3]: "1"), host, port);
 }
 
