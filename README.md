@@ -24,9 +24,11 @@ dependencies：
 example:
 =============
     test with gcc-4.8.
+    $
     $ export BOOST_ROOT=boost_1_57_0
     $ b2
-    $ bin/example
+    $ bin/example -l 33333
+    $ bin/example 127.0.0.1 33333 -t
 
 message table
 
