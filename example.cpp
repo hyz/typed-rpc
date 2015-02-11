@@ -84,7 +84,7 @@ struct Message_handle : service_def<Message_handle,Message_table> //::: server-s
         reply(0,0);
     }
 
-    Message_handle(tcp::socket* s) : service_def<Message_handle,Message_table>(s) {}
+    Message_handle(ip::tcp::socket* s) : service_def<Message_handle,Message_table>(s) {}
 };
 
 struct Client : agent_def<Client,Message_table>, singleton<Client>
@@ -116,11 +116,11 @@ void ensure(bool y, T&&... t)
 }
 #define ENSURE(...) ensure(__VA_ARGS__,__LINE__)
 
-static tcp::endpoint make_endpoint(char const* host, char const* port)
+static ip::tcp::endpoint make_endpoint(char const* host, char const* port)
 {
     if (host)
-        return tcp::endpoint(ip::address::from_string(host), std::stoi(port));
-    return tcp::endpoint(tcp::v4(), std::stoi(port));
+        return ip::tcp::endpoint(ip::address::from_string(host), std::stoi(port));
+    return ip::tcp::endpoint(ip::tcp::v4(), std::stoi(port));
 }
 
 static void handle_push_accept(Acceptor* a, boost::system::error_code ec)
@@ -133,16 +133,16 @@ static void handle_push_accept(Acceptor* a, boost::system::error_code ec)
     auto ptr = server<Push::Message_handle>::construct(&a->socket);
     ptr->start(); //::: start
 
-    a->async_accept(boost::bind(&handle_push_accept, a, placeholders::error));
+    a->async_accept([a](boost::system::error_code ec){ handle_push_accept(a, ec); });
 }
 
-int server_main(tcp::endpoint ep1) //(, tcp::endpoint ep2)//(int argc, char* const argv[])
+int server_main(ip::tcp::endpoint ep1) //(, ip::tcp::endpoint ep2)//(int argc, char* const argv[])
 {
     boost::asio::io_service io_s;
 
     server<Push::Message_handle> pushs;
     Acceptor pusha(io_s, ep1);
-    pusha.async_accept(boost::bind(&handle_push_accept, &pusha, placeholders::error));
+    pusha.async_accept([&pusha](boost::system::error_code ec){ handle_push_accept(&pusha, ec); });
 
     std::cout << io_s.run() <<"\n";
     return 0;

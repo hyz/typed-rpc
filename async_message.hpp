@@ -3,8 +3,6 @@
 #include <vector>
 #include <string>
 #include <array>
-//#include <forward_list>
-//#include <unordered_map>
 #include <algorithm>
 #include <boost/noncopyable.hpp>
 #include <boost/pool/object_pool.hpp>
@@ -12,41 +10,32 @@
 #include <boost/intrusive/list.hpp>
 //#include <boost/intrusive/unordered_set.hpp>
 //#include <boost/functional/hash.hpp>
-//#include <boost/predef.h> // BOOST_ENDIAN_BIG_BYTE
-//#include <boost/tuple/tuple.hpp>
 #include <boost/interprocess/streams/vectorstream.hpp>
 #include <boost/interprocess/streams/bufferstream.hpp>
 //#include <boost/archive/text_iarchive.hpp>
 //#include <boost/archive/text_oarchive.hpp>
-//typedef boost::archive::text_oarchive oArchive;
-//typedef boost::archive::text_iarchive iArchive;
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/asio/io_service.hpp>
-//#include <boost/asio/streambuf.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/asio/deadline_timer.hpp>
-#include <boost/asio/placeholders.hpp>
 #include <boost/msm/back/state_machine.hpp>
 #include <boost/msm/front/state_machine_def.hpp>
 #include <boost/msm/front/functor_row.hpp>
 #include "singleton.h"
-//#include "log.h"
 
 typedef boost::archive::binary_oarchive oArchive;
 typedef boost::archive::binary_iarchive iArchive;
+//typedef boost::archive::text_oarchive oArchive;
+//typedef boost::archive::text_iarchive iArchive;
 
 namespace msm = boost::msm;
 namespace mpl = boost::mpl;
-using namespace msm::front;
-
-namespace placeholders = boost::asio::placeholders;
-namespace ip = boost::asio::ip;
-using ip::tcp;
 namespace intrusive = boost::intrusive;
+namespace ip = boost::asio::ip;
 
 typedef unsigned int UInt;
 
@@ -55,10 +44,19 @@ struct _Logger {
         std::clog << t <<" ";
         return *const_cast<_Logger*>(this);
     }
-    ~_Logger() { std::clog <<"\n"; }
     _Logger(int line, char const*) {}
+    ~_Logger() { std::clog <<"\n"; }
 };
 #define LOG _Logger(__LINE__,__FILE__)
+
+inline bool _Success(boost::system::error_code const& ec, int line, char const* filename)
+{
+    if (ec) {
+        LOG << ec << ec.message() <<"#"<< line;
+    }
+    return (!ec);
+}
+#define _SUCCESS(ec) _Success(ec, __LINE__,__FILE__)
 
 inline boost::asio::mutable_buffers_1 as_buffer(uint32_t& n)
 {
@@ -240,7 +238,7 @@ struct Multic_query_list__ : std::list<Request_response>
         }
     }
 
-    tcp::socket sock;
+    ip::tcp::socket sock;
 
     struct recvbuf : std::vector<char> {
         uint32_t len = 0;
@@ -259,18 +257,16 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
     typedef Multic<Derived, Protocol,Nc> This;
     typedef msm::back::state_machine<This> SMac;
 
-    //tcp::resolver resolver;
+    //ip::tcp::resolver resolver;
     struct Ev_request {};
     struct Ev_network_error {};
     struct Ev_connected {};
     struct Ev_resolved {};
 
-    // typedef typename Protocol::request_response query;
     typedef Multic_query_list__<Derived,typename Protocol::request_response> query_list;
-    //typedef std::list<boost::intrusive_ptr<query_list>> list_type;
     typedef intrusive::list<query_list, intrusive::member_hook<query_list,intrusive::list_member_hook<>, &query_list::list_hook_>> list_type;
     list_type querys;
-    typedef boost::intrusive_ptr<query_list> query_ptr; // typedef typename list_type::iterator query_iterator;
+    typedef boost::intrusive_ptr<query_list> query_ptr;
 
     ~Multic()
     {
@@ -282,7 +278,7 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
     }
     Multic(boost::asio::io_service& io_s, std::string h, unsigned short port)
         : host(std::move(h))
-        , endpx(tcp::v4(), port)
+        , endpx(ip::tcp::v4(), port)
         , sock_(io_s)
         , timer_(io_s)
     {}
@@ -351,7 +347,7 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
         template <class Ev, class M, class S, class T>
         void operator()(Ev const& ev, M& m, S&, T&) {
             BOOST_ASSERT(!m.sock_.is_open());
-            //! m.sock_.open(tcp::v4());
+            //! m.sock_.open(ip::tcp::v4());
             m.sock_.async_connect(m.endpx, Handle_connect{&m});
         }
     };
@@ -362,10 +358,9 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
             if (m.sockets.empty()) {
                 boost::system::error_code ec;
                 m.sock_.connect(m.endpx, ec);
-                if (ec) {
-                    LOG <<"connect"<< ec << ec.message();
+                if (!_SUCCESS(ec)) {
                     m.sock_.close(ec); // BOOST_ASSERT(!m.sock_.is_open());
-                m.process_event(Ev_network_error());
+                    m.process_event(Ev_network_error());
                     return;
                 }
                 m.sockets.emplace(m.sockets.end(), std::move(m.sock_));
@@ -380,9 +375,8 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
         SMac* m; // int native_handle = 0; // sockets sk_ptr;
         void operator()(boost::system::error_code ec)
         {
-            if (ec) {
+            if (!_SUCCESS(ec)) {
                 BOOST_ASSERT(!m->sock_.is_open());
-                LOG << ec << ec.message();
                 m->process_event(Ev_network_error());
                 return;
             }
@@ -398,8 +392,8 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
         query_ptr ptr;
         void operator()(boost::system::error_code ec, size_t bytes_transferred)
         {
-            if (ec) {
-                return This::_handle_write_error(ec, ptr, __LINE__);
+            if (!_SUCCESS(ec)) {
+                return This::_handle_write_error(ec, ptr);
             }
             boost::asio::async_read(ptr->sock, as_buffer(ptr->buf.len), Handle_read_size{ptr});
         }
@@ -408,8 +402,8 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
         query_ptr ptr; // query_iterator it;
         void operator()(boost::system::error_code ec, size_t bytes_transferred)
         {
-            if (ec) {
-                return This::_handle_write_error(ec, ptr, __LINE__);
+            if (!_SUCCESS(ec)) {
+                return This::_handle_write_error(ec, ptr);
             }
             ptr->buf.resize(ntohl(ptr->buf.len));
             boost::asio::async_read(ptr->sock, boost::asio::buffer(ptr->buf), Handle_read_content{ptr});
@@ -419,8 +413,8 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
         query_ptr ptr; // query_iterator it;
         void operator()(boost::system::error_code ec, size_t bytes_transferred)
         {
-            if (ec) {
-                return This::_handle_write_error(ec, ptr, __LINE__);
+            if (!_SUCCESS(ec)) {
+                return This::_handle_write_error(ec, ptr);
             }
             BOOST_ASSERT(!ptr->empty());
             BOOST_ASSERT(!ptr->list_hook_.is_linked());
@@ -470,30 +464,30 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
     };
 
     typedef mpl::vector<Wait_request,Resolved> initial_state;
+    template <typename... T> using Row = msm::front::Row<T...> ;
+    typedef msm::front::none None;
 
     struct transition_table : mpl::vector<
         Row< Wait_request , Ev_request       , Wait_connect , Make_connection  , Under_limit          >
       , Row< Wait_request , Ev_request       , Wait_request , Write_sockets    , Sockets_not_empty    >
-      , Row< Wait_connect , boost::any       , Wait_request , none             , none                 >
-      , Row< Wait_connect , Ev_connected     , _Switch_next , Write_sockets    , none                 >
-      , Row< _Switch_next , none             , Wait_request , none             , none                 >
-      , Row< _Switch_next , none             , Wait_connect , Make_connection  , Has_request_and_Under_limit >
+      , Row< Wait_connect , boost::any       , Wait_request , None             , None                 >
+      , Row< Wait_connect , Ev_connected     , _Switch_next , Write_sockets    , None                 >
+      , Row< _Switch_next , None             , Wait_request , None             , None                 >
+      , Row< _Switch_next , None             , Wait_connect , Make_connection  , Has_request_and_Under_limit >
         /// / // / // / ///
-      , Row< Wait_resolve , Ev_resolved      , Resolved     , none             , none                 >
-      , Row< Resolved     , Ev_network_error , Wait_resolve , none             , Sockets_is_empty     >
+      , Row< Wait_resolve , Ev_resolved      , Resolved     , None             , None                 >
+      , Row< Resolved     , Ev_network_error , Wait_resolve , None             , Sockets_is_empty     >
     > { };
 
     template <class Ev, class M>
     void no_transition(Ev const& ev, M& fsm, int state)
-    {
-        ////(std::is_same<EvWrite,typename std::decay<ev>::type>::value) {}
-    }
+    {}
 
     template <class Ev, class M> void on_entry(Ev const& ev, M& m)
     {}
     template <class Ev, class M> void on_exit(Ev const&, M&) {}
 
-    void _close(tcp::socket& sock)
+    void _close(ip::tcp::socket& sock)
     {
         //LOG << "is_open" << sock.is_open();
         boost::system::error_code ec;
@@ -501,10 +495,9 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
         n_sock--;
     }
 
-    static void _handle_write_error(boost::system::error_code ec, query_ptr ptr, int lno)
+    static void _handle_write_error(boost::system::error_code ec, query_ptr ptr)
     {
         auto& m = Derived::instance();
-        LOG << ec << ec.message() << lno;
         m._close(ptr->sock);
         m.querys.push_back(*ptr); // m.querys.splice(m.querys.begin(), m.querys, m.querys.iterator_to(*ptr));
         m.process_event(Ev_network_error());
@@ -538,17 +531,14 @@ struct Multic : msm::front::state_machine_def<Multic<Derived,Protocol,Nc>> //, b
     void _destroy(query_list* p)
     {
         BOOST_ASSERT (!p->list_hook_.is_linked());
-        //if (p->list_hook_.is_linked()) {
-            // querys.erase( querys.iterator_to(*p) );
-        //}
         qa_pool_.destroy(p);
     }
 
-    tcp::endpoint endpx;
+    ip::tcp::endpoint endpx;
     std::string host;
 
-    std::vector<tcp::socket> sockets;
-    tcp::socket sock_;
+    std::vector<ip::tcp::socket> sockets;
+    ip::tcp::socket sock_;
 
     unsigned short n_req = 0;
     unsigned short n_sock = 0;
@@ -715,7 +705,6 @@ struct Message_server_side
         Lup<std::tuple_size<Table>::value>::dispa_(ia, h);
     }
 };
-// template <typename Table, typename Handle> using Message_server_side = Server_side_helper<Handle,Table>;
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -732,23 +721,22 @@ template <typename service> struct server; //struct EmptyS_ {};
 template <typename Handle, typename Table/*, typename Extend=EmptyS_*/>
 struct service_ : msm::front::state_machine_def<service_<Handle,Table>>
                 , boost::intrusive::list_base_hook<>
-        // , Extend
 {
-    // typedef service_ This; //typedef msm::back::state_machine<This> SMac;
+    // typedef service_ This;
     typedef boost::intrusive_ptr<Handle> pointer;
 
     pointer cast_this() const { return pointer( downcast<Handle>(this) ); }
 
     unsigned int reference_count_ = 0;
     time_t tpa_ = 0;
-    tcp::socket socket;
+    ip::tcp::socket socket;
 
     struct message : std::vector<char> {
         uint32_t len = 0;
     } requestbuf, replybuf;
 
-    service_(tcp::socket* sk)
-        : socket(std::move(*sk)) // : socket( server<Handle>::instance().get_io_service() ) //(std::move(*sk))
+    service_(ip::tcp::socket* sk)
+        : socket(std::move(*sk))
     { }
 
     template <typename Ev> void fire_event(Ev&& ev) {
@@ -769,9 +757,8 @@ struct service_ : msm::front::state_machine_def<service_<Handle,Table>>
         pointer ptr;
         void operator()(boost::system::error_code ec, size_t bytes_transferred)
         {
-            auto& m = *ptr; // ptr->handle_read(*ptr, ec, bytes_transferred);
-            if (ec) {
-                LOG << ec << ec.message();
+            auto& m = *ptr;
+            if (!_SUCCESS(ec)) {
                 m.fire_event(Ev_close());
                 return;
             }
@@ -782,15 +769,13 @@ struct service_ : msm::front::state_machine_def<service_<Handle,Table>>
         pointer ptr;
         void operator()(boost::system::error_code ec, size_t bytes_transferred)
         {
-            auto& m = *ptr; // ptr->handle_read(*ptr, ec, bytes_transferred);
-            if (ec) {
-                LOG << ec << ec.message();
+            auto& m = *ptr;
+            if (!_SUCCESS(ec)) {
                 m.fire_event(Ev_close());
                 return;
             }
             m.replybuf.clear();
             m.fire_event(Ev_writeall());
-            //LOG << "";
         }
     };
 
@@ -799,8 +784,8 @@ struct service_ : msm::front::state_machine_def<service_<Handle,Table>>
         {
             //LOG << typeid(Ev).name() << "Wait_header";
             server<Handle>::instance()._mark_live( *downcast<Handle>(&m) );
-            m.requestbuf.len = 0; //transfer_at_least
-            m.requestbuf.clear(); //transfer_at_least
+            m.requestbuf.len = 0;
+            m.requestbuf.clear();
             boost::asio::async_read(m.socket
                     , as_buffer(m.requestbuf.len) , handle_read{ m.cast_this() });
         }
@@ -827,7 +812,6 @@ struct service_ : msm::front::state_machine_def<service_<Handle,Table>>
     struct Wait_write : public msm::front::state<> {
         template <class Ev, class M> void on_entry(Ev const&, M& m)
         {
-            //LOG << m.replybuf.size() << "Wait_write";
             m.replybuf.len = htonl(m.replybuf.size());
             boost::array<boost::asio::const_buffer,2> bufs{ as_buffer(m.replybuf.len), boost::asio::buffer(m.replybuf) };
             boost::asio::async_write(m.socket, bufs, handle_write{ m.cast_this() });
@@ -840,15 +824,11 @@ struct service_ : msm::front::state_machine_def<service_<Handle,Table>>
             BOOST_ASSERT(m.replybuf.empty());
             Message_server_side<Handle,Table>::dispatch(m.requestbuf, m.cast_this()); //::: server-side
         }
-        template <class Ev, class M> void on_exit(Ev const&, M&) {
-            //LOG << typeid(Ev).name() << "Process_message";
-        }
+        template <class Ev, class M> void on_exit(Ev const&, M&) {}
     };
     struct Running : public msm::front::state<> {
         template <class Ev, class M> void on_entry(Ev const&, M&) {}
-        template <class Ev, class M> void on_exit(Ev const&, M&) {
-            //LOG << typeid(Ev).name() << "Running";
-        }
+        template <class Ev, class M> void on_exit(Ev const&, M&) {}
     };
     struct Closing : msm::front::interrupt_state<Ev_writeall> {
         template <class Ev, class M> void on_entry(Ev const&, M&)
@@ -875,23 +855,25 @@ struct service_ : msm::front::state_machine_def<service_<Handle,Table>>
         template <class Ev, class M, class S, class T>
         bool operator()(Ev const& ev, M& m, S&, T&) { return 1; }
     };
-    //struct Process_message { template <class Ev, class M, class S, class T> void operator()(Ev const& ev, M& m, S&, T&) {} };
 
     //typedef Wait_header initial_state;
     typedef mpl::vector<Wait_header,Running> initial_state;
 
+    template <typename... T> using Row = msm::front::Row<T...> ;
+    typedef msm::front::none None;
+
     struct transition_table : mpl::vector<
-        Row< Wait_header     , Ev_read     , Wait_body       , none  , none         >
-      , Row< Wait_body       , Ev_read     , Process_message , none  , none         >
-      , Row< Wait_response   , Ev_response , Wait_write      , none  , none         >
-      , Row< Wait_response   , none        , Wait_write      , none  , Has_response >
-      , Row< Wait_write      , Ev_writeall , Wait_header     , none  , none         >
-      , Row< Process_message , none        , Wait_header     , none  , none         >
-      , Row< Process_message , none        , Wait_response   , none  , Is_request   >
+        Row< Wait_header     , Ev_read     , Wait_body       , None  , None         >
+      , Row< Wait_body       , Ev_read     , Process_message , None  , None         >
+      , Row< Wait_response   , Ev_response , Wait_write      , None  , None         >
+      , Row< Wait_response   , None        , Wait_write      , None  , Has_response >
+      , Row< Wait_write      , Ev_writeall , Wait_header     , None  , None         >
+      , Row< Process_message , None        , Wait_header     , None  , None         >
+      , Row< Process_message , None        , Wait_response   , None  , Is_request   >
         /// ///
-      , Row< Running       , Ev_close    , Closed        , none            , none           >
-      , Row< Running       , Ev_close    , Closing       , none            , Has_response   >
-      , Row< Closing       , Ev_writeall , Closed        , none            , none           >
+      , Row< Running       , Ev_close    , Closed        , None            , None           >
+      , Row< Running       , Ev_close    , Closing       , None            , Has_response   >
+      , Row< Closing       , Ev_writeall , Closed        , None            , None           >
     > {};
 
     template <class Ev, class M>
@@ -904,10 +886,6 @@ struct service_ : msm::front::state_machine_def<service_<Handle,Table>>
     }
     template <class Ev, class M> void on_exit(Ev const&, M&) {
         //LOG << typeid(Ev).name();
-    }
-
-    std::string connection_info() const {
-        return "";
     }
 
     void reply(std::vector<char>&& buf) {
@@ -938,11 +916,11 @@ struct server : boost::intrusive::list<service>, singleton<server<service>>
         auto& self = This::instance();
         pointer p( self.pool_.construct(std::forward<T>(t)...) );
         self.push_back(*p);
-        self._mark_live(*p); // LOG << p;
-        return p; // pointer( p );
+        self._mark_live(*p);
+        return p;
     }
 
-//private: ///////////////////////////////////////////////////////////////////
+//private: /////////////////////
     void _mark_live(service& m) {
         m.tpa_ = time(0);
         this->splice(this->end(), *this, this->iterator_to(m));
@@ -955,7 +933,7 @@ struct server : boost::intrusive::list<service>, singleton<server<service>>
         this->pool_.destroy(p);
     }
 
-//    //static void check()
+//    //void check()
 //    //{
 //    //    auto& lis = This::instance().lis_;
 //    //    if (lis.empty()) {
@@ -993,17 +971,17 @@ inline void intrusive_ptr_release(service_def<Service,Table>* p)
 
 struct Acceptor : boost::noncopyable
 {
-    tcp::socket socket;
-    tcp::acceptor acceptor_;
+    ip::tcp::socket socket;
+    ip::tcp::acceptor acceptor_;
 
-    Acceptor(boost::asio::io_service& io_s, tcp::endpoint endpx)
+    Acceptor(boost::asio::io_service& io_s, ip::tcp::endpoint endpx)
         : socket(io_s)
         , acceptor_(io_s, endpx, true)
     {
         LOG << endpx;
 
         //acceptor_.open(endpx.protocol());
-        acceptor_.set_option(tcp::acceptor::reuse_address(true));
+        acceptor_.set_option(ip::tcp::acceptor::reuse_address(true));
         //acceptor_.bind(endpx);
         acceptor_.listen();
     }
@@ -1013,9 +991,8 @@ struct Acceptor : boost::noncopyable
     {
         boost::system::error_code ec;
         socket.close(ec);
-        //socket.open(tcp::v4());
-        //self.async_accept(sock, &IMC_acceptor::create);
-        acceptor_.async_accept(socket, fn); //(socket_, &IMC_acceptor::create);
+        //socket.open(ip::tcp::v4());
+        acceptor_.async_accept(socket, fn);
     }
 };
 
