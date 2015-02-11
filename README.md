@@ -1,7 +1,7 @@
 # cpp-async-native-messaging
 
-async tcp request/response client & server, RPC-like.
-mainly designed for exchange message between c++ server nodes.
+Async tcp request/response client & server, RPC-like.
+Mainly designed for exchange message between c++ server nodes.
 
 features:
 =========
