@@ -24,7 +24,7 @@ dependencies：
 example:
 =============
     test with gcc-4.8.
-    $ export BOOST_BUILD=/opt/boost
+    $ export BOOST_ROOT=boost_1_57_0
     $ b2
     $ bin/example
 
