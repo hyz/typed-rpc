@@ -196,7 +196,7 @@ void download_file(ip::address host, unsigned short port, std::string filename)
     io_s.run();
 }
 
-static ip::tcp::endpoint make_endpoint(char const* host, char const* port)
+static ip::tcp::endpoint make_endpx(char const* host, char const* port)
 {
     if (host)
         return ip::tcp::endpoint(ip::address::from_string(host), std::stoi(port));
@@ -212,7 +212,7 @@ int main(int ac, char *const av[])
 
     if (av[1] == std::string("-l")) {
         //$ bin/example -l <port>
-        return server_main(make_endpoint(0, av[2]));
+        return server_main(make_endpx(0, av[2]));
     }
 
     auto host = ip::address::from_string(av[1]);
