@@ -32,9 +32,9 @@ message table
 
 ```c++
 typedef Message::Table<
-    ___reserved___
-  , Message::Pair< Request<Msg_Time>, Response<std::string> >
+    Message::Pair< Request<Msg_Time>, Response<std::string> >
 > Message_table;
+```
 
 server side
 
@@ -69,4 +69,6 @@ std::string get_time(ip::address host, unsigned short port)
 }
 
 ```
+
+see example.cpp
 
