@@ -1,7 +1,6 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
-#include "adv_async_socket_message.hpp"
-#include "util.h"
+#include "async_message.hpp"
 namespace filesystem = boost::filesystem;
 
 namespace Push {
@@ -69,7 +68,9 @@ struct Message_handle : service_def<Message_handle,Message_table> //::: server-s
             reply(1, std::string("file not exist"));
             return;
         }
-        reply( 0, readfile(filename));
+        boost::filesystem::ifstream ifs(filename);
+        std::istreambuf_iterator<char> i(ifs), end;
+        reply( 0, std::string(i, end) );
     }
 
     template <typename Reply>
@@ -165,7 +166,6 @@ void client_test(ip::address host, unsigned short port, int n_req, Data data)
     std::cout << n_req
         <<" "<< pshc.sockets.size()
         <<"\n";
-    pshc._singleton_reset();
 }
 
 int client_main(int n_req, ip::address host, unsigned short port)

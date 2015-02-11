@@ -23,6 +23,10 @@ dependencies：
 
 example:
 =============
+    test with gcc-4.8.
+    $ export BOOST_BUILD=/opt/boost
+    $ b2
+    $ bin/example
 
 ```c++
 typedef Message::tag<struct N0> Msg_Echo;

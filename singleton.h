@@ -9,17 +9,17 @@ struct singleton : boost::noncopyable
 {
     static T& instance();
 
-    static void _singleton_reset() { s_this_ = 0; } //void attach_this() { s_this_ = static_cast<T*>(this); }
-
 protected:
     singleton()
     {
         BOOST_ASSERT(!s_this_);
         if (s_this_) {
+            std::cerr << "this is singleton!\n";
             abort();
         }
         s_this_ = static_cast<T*>(this);
     }
+    ~singleton() { s_this_ = 0; }
 
     static T* s_this_;
 };

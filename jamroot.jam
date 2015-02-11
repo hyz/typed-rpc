@@ -1,75 +1,27 @@
 import os ;
 
-path-constant TOP : . ;
-path-constant HOME : [ os.environ HOME ] ;
-path-constant BOOST_ROOT : /opt/boost ;
+BOOST_ROOT = [ os.environ BOOST_ROOT ] ;
+if ! $(BOOST_ROOT) { BOOST_ROOT = /opt/boost ; }
 
 use-project /boost : $(BOOST_ROOT) ;
 
 project
     : requirements
-        <toolset>gcc:<cxxflags>"-Wno-unused-local-typedefs" # <toolset>gcc:<cxxflags>-std=c++11
-        # <toolset>clang:<cxxflags>"-stdlib=libc++" <toolset>clang:<linkflags>"-stdlib=libc++"
+        <toolset>gcc:<cxxflags>"-Wno-unused-local-typedefs"
+        <toolset>gcc:<cxxflags>"-std=c++11"
         <threading>multi
-        <include>.
         <include>$(BOOST_ROOT)
     : default-build release
     ;
 
-lib ssl crypto : : <search>/usr/lib64 <link>shared ;
-# lib curl : : <link>shared ;
-
-# lib hiredis ;
-# lib iconv : : <name>iconv <search>/usr/local/lib ;
-# lib bz2 z m ;
-# lib jpeg png ;
-# lib png12 : : <name>png12 ;
-
-lib our
-    :
-        util.cpp
-        # myerror.cpp log.cpp json2.cpp rapidjson//json
-        # dbc.cpp ../mysql//client ../redis//client
-        /boost//system
-        /boost//filesystem
-        /boost//timer
-        /boost//program_options
-        /boost//serialization
-        # /boost//thread # /boost//regex /boost//random
-   : <link>static
-     # <cflags>-pg <linkflags>-pg
-   ;
-
-exe example
-    : example.cpp buildinfo.cpp our # ssl
+alias boost-libs
+    : /boost//system /boost//serialization /boost//filesystem /boost//timer /boost//program_options
+    : <link>static
     ;
 
-install usr/local/bin : example ;
+exe example
+    : example.cpp boost-libs
+    ;
 
-actions buildinfo
-{
-    Revision=0
-    if which svn >/dev/null 2>&1 ; then
-        Revision=`svn info |grep '^Rev'`
-    fi
-
-    cat > $(<) <<_EoF
-#define BUILD_REV "$Revision"
-#define BUILD_DATE "`date`"
-#define BUILD_USER "$USER"
-
-#include "log.h"
-void print_buildinfo(int bg) {
-    //std::cout << BUILD_REV << "\n";
-    //std::cout << BUILD_DATE <<" "<< BUILD_USER << "\n";
-    //if (bg)
-    {
-        LOG << BUILD_REV;
-        LOG << BUILD_DATE << BUILD_USER;
-    }
-}
-_EoF
-}
-
-make buildinfo.cpp : our : @buildinfo ;
+install bin : example ;
 
