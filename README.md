@@ -1,4 +1,4 @@
-# cpp-remote-messaging
+# cpp-async-native-messaging
 
 async tcp request/response client & server, RPC-like.
 mainly designed for exchange message between c++ server nodes.
