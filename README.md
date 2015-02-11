@@ -31,6 +31,8 @@ example:
 message table
 
 ```c++
+typedef Message::tag<struct M1> Msg_Time;
+
 typedef Message::Table<
     Message::Pair< Request<Msg_Time>, Response<std::string> >
 > Message_table;
