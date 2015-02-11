@@ -28,32 +28,45 @@ example:
     $ b2
     $ bin/example
 
+message table
+
 ```c++
-typedef Message::tag<struct N0> Msg_Echo;
-typedef Message::tag<struct N1> Msg_Time;
-typedef Message::tag<struct N2> Msg_File;
-typedef Message::Pair< Message::Request<>, Message::Response<> > ___reserved___;
-
-using Message::Request;
-using Message::Response;
-
 typedef Message::Table<
     ___reserved___
-  , ___reserved___
-  , ___reserved___
-
-  , Message::Pair< Request<Msg_Echo, UInt, UInt>, Response<UInt, UInt> >
-  , Message::Pair< Request<Msg_Echo, UInt, UInt>, Response<UInt, UInt> >
-  , Message::Pair< Request<Msg_Echo, UInt, std::string>, Response<UInt, std::string> >
-  , ___reserved___
-  , ___reserved___
-  , ___reserved___
-
   , Message::Pair< Request<Msg_Time>, Response<std::string> >
-  , ___reserved___
-  , Message::Pair< Request<Msg_File,std::string>, Response<int,std::string> >
-  , ___reserved___
 > Message_table;
+
+server side
+
+```c++
+struct Message_handle : service_def<Message_handle,Message_table> //::: server-side
+{
+    template <typename Reply>
+    void operator()(Reply reply, Msg_Time) const
+    {
+        time_t ct = time(0);
+        reply( std::string( ctime(&ct) ) );
+    }
+
+    Message_handle(ip::tcp::socket* s) : service_def<Message_handle,Message_table>(s) {}
+};
+```
+client side
+
+```c++
+std::string get_time(ip::address host, unsigned short port)
+{
+    boost::asio::io_service io_s;
+    Example::Client exc(io_s, host, port);
+
+    std::string ret;
+    auto save_time = [&ret](std::string& ts) {
+        ret = std::move(ts);
+    };
+    exc.async_do(save_time, Example::Msg_Time());
+    io_s.run();
+    return std::move(ret);
+}
 
 ```
 
