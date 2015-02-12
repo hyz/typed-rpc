@@ -8,9 +8,9 @@ namespace filesystem = boost::filesystem;
 
 namespace Example {
 
-typedef Message::tag<struct N0> Msg_Echo;
-typedef Message::tag<struct N1> Msg_Time;
-typedef Message::tag<struct N2> Msg_File;
+typedef Message::tag<struct N0> Msg_echo;
+typedef Message::tag<struct N1> Msg_time;
+typedef Message::tag<struct N2> Msg_file;
 typedef Message::Pair< Message::Request<>, Message::Response<> > ___reserved___;
 
 using Message::Request;
@@ -18,35 +18,35 @@ using Message::Response;
 
 typedef Message::Table<
     ___reserved___
-  , Message::Pair< Request<Msg_Echo, UInt, UInt>, Response<UInt, UInt> >
-  , Message::Pair< Request<Msg_Echo, UInt, std::string>, Response<UInt, std::string> >
-  , Message::Pair< Request<Msg_Echo, UInt, std::map<int,std::string>>, Response<UInt, std::map<int,std::string>> >
+  , Message::Pair< Request<Msg_echo, UInt, UInt>, Response<UInt, UInt> >
+  , Message::Pair< Request<Msg_echo, UInt, std::string>, Response<UInt, std::string> >
+  , Message::Pair< Request<Msg_echo, UInt, std::map<int,std::string>>, Response<UInt, std::map<int,std::string>> >
   , ___reserved___
-  , Message::Pair< Request<Msg_Time>, Response<std::string> >
+  , Message::Pair< Request<Msg_time>, Response<std::string> >
   , ___reserved___
-  , Message::Pair< Request<Msg_File,std::string>, Response<int,std::string> >
+  , Message::Pair< Request<Msg_file,std::string>, Response<int,std::string> >
   , ___reserved___
   , Message::Pair< Request<std::vector<int>,std::map<int,std::string>>, Response<std::vector<int>,std::map<int,std::string>> >
 > Message_table;
 
 struct Message_handle : service_def<Message_handle,Message_table> //::: server-side
 {
-    /// handle all Msg_Echo message
+    /// handle all Msg_echo message
     //
     template <typename Reply, typename...T>
-    void operator()(Reply reply, Msg_Echo, T&& ...t) const
+    void operator()(Reply reply, Msg_echo, T&& ...t) const
     {
         reply(std::forward<T>(t)...);
     }
 
     template <typename Reply>
-    void operator()(Reply reply, Msg_Time) const
+    void operator()(Reply reply, Msg_time) const
     {
         time_t ct = time(0);
         reply( std::string( ctime(&ct) ) );
     }
     template <typename Reply>
-    void operator()(Reply reply, Msg_File, std::string& filename) const
+    void operator()(Reply reply, Msg_file, std::string& filename) const
     {
         if (!filesystem::exists(filename)) {
             reply(1, std::string("file not exist"));
@@ -129,7 +129,7 @@ static void echo_test(ip::address host, unsigned short port, int n_req, Data dat
         boost::timer::auto_cpu_timer t;
         for (int i=0; i < n_req; ++i) {
             exc.async_do([i,&n_rsp,&data](int x, Data const& u) { ENSURE(x==i && u==data); ++n_rsp; }
-                    , Example::Msg_Echo(), i, data);
+                    , Example::Msg_echo(), i, data);
         }
         io_s.run();
     }
@@ -169,7 +169,7 @@ std::string get_time(ip::address host, unsigned short port)
     auto save_time = [&ret](std::string& ts) {
         ret = std::move(ts);
     };
-    exc.async_do(save_time, Example::Msg_Time());
+    exc.async_do(save_time, Example::Msg_time());
     io_s.run();
     return std::move(ret);
 }
@@ -191,7 +191,7 @@ void download_file(ip::address host, unsigned short port, std::string filename)
             std::cerr << ec <<" "<< data <<"\n";
         }
     };
-    exc.async_do(save_file, Example::Msg_File(), filename);
+    exc.async_do(save_file, Example::Msg_file(), filename);
 
     io_s.run();
 }
