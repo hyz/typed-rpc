@@ -43,7 +43,8 @@ struct Message_handle : service_def<Message_handle,Message_table> //::: server-s
     void operator()(Reply reply, Msg_time) const
     {
         time_t ct = time(0);
-        reply( std::string( ctime(&ct) ) );
+        std::string ret = ctime(&ct);
+        reply( ret );
     }
     template <typename Reply>
     void operator()(Reply reply, Msg_file, std::string& filename) const
@@ -95,7 +96,7 @@ static void _ensure(bool y, T&&... t)
 }
 #define ENSURE(...) _ensure(__VA_ARGS__,__LINE__)
 
-static void handle_push_accept(Acceptor* a, boost::system::error_code ec)
+static void handle_accept(Acceptor* a, boost::system::error_code ec)
 {
     if (!_SUCCESS(ec)) {
         return;
@@ -104,18 +105,19 @@ static void handle_push_accept(Acceptor* a, boost::system::error_code ec)
     auto ptr = server<Example::Message_handle>::construct(&a->socket);
     ptr->start(); //::: start
 
-    a->async_accept([a](boost::system::error_code ec){ handle_push_accept(a, ec); });
+    a->async_accept([a](boost::system::error_code ec){ handle_accept(a, ec); });
 }
 
-int server_main(ip::tcp::endpoint ep1) //(, ip::tcp::endpoint ep2)//(int argc, char* const argv[])
+int server_main(ip::tcp::endpoint ep1)
 {
     boost::asio::io_service io_s;
 
-    server<Example::Message_handle> exs;
+    server<Example::Message_handle> srv; // singleton
     Acceptor a(io_s, ep1);
-    a.async_accept([&a](boost::system::error_code ec){ handle_push_accept(&a, ec); });
+    a.async_accept([&a](boost::system::error_code ec){ handle_accept(&a, ec); });
 
     io_s.run();
+    static_cast<void>(srv); // silient warning
     return 0;
 }
 
@@ -140,7 +142,7 @@ static void echo_test(ip::address host, unsigned short port, int n_req, Data dat
         <<"\n";
 }
 
-int client_main(int n_req, ip::address host, unsigned short port)
+int client_test(int n_req, ip::address host, unsigned short port)
 {
     std::string b60 = "000000000000000000000000000000000000000000000000000000000000";
     std::string b100 = 
@@ -230,6 +232,6 @@ int main(int ac, char *const av[])
     }
 
         //$ bin/example <host> <port> [N-repeat]
-    return client_main(std::stoi(ac>3 ? av[3]: "1"), host, port);
+    return client_test(std::stoi(ac>3 ? av[3]: "1"), host, port);
 }
 
