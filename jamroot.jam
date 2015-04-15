@@ -20,7 +20,8 @@ alias boost-libs
     ;
 
 exe example
-    : example.cpp boost-libs
+    : examples/example.cpp boost-libs
+    : <include>.
     ;
 
 install bin : example ;

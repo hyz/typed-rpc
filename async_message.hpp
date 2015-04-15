@@ -39,6 +39,7 @@ namespace ip = boost::asio::ip;
 
 typedef unsigned int UInt;
 
+#if !defined(LOG)
 struct _Logger {
     template <typename T> _Logger& operator<<(T&& t) const {
         std::clog << t <<" ";
@@ -48,6 +49,7 @@ struct _Logger {
     ~_Logger() { std::clog <<"\n"; }
 };
 #define LOG _Logger(__LINE__,__FILE__)
+#endif
 
 inline bool _Success(boost::system::error_code const& ec, int line, char const* filename)
 {
@@ -978,7 +980,7 @@ struct Acceptor : boost::noncopyable
         : socket(io_s)
         , acceptor_(io_s, endpx, true)
     {
-        LOG << endpx;
+        // LOG << endpx;
 
         //acceptor_.open(endpx.protocol());
         acceptor_.set_option(ip::tcp::acceptor::reuse_address(true));
