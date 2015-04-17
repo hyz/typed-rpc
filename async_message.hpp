@@ -658,11 +658,7 @@ struct Message_server_side
     template <int Ix, typename Tuple>
     struct reply_pack
     {
-<<<<<<< HEAD
         boost::intrusive_ptr<Handle> ptr_; // // std::vector<char>* replybuf;
-=======
-        boost::intrusive_ptr<Handle> ptr; // // std::vector<char>* replybuf;
->>>>>>> a0e1a537113da3d2ef3763936276187829e35140
         template <typename... T>
         void operator()(T&&... t) const
         {
@@ -676,11 +672,7 @@ struct Message_server_side
             }
             std::vector<char> sbuf;
             vecbuf.swap_vector(sbuf);//(*replybuf);
-<<<<<<< HEAD
             ptr_->reply( std::move(sbuf) );
-=======
-            ptr->reply( std::move(sbuf) );
->>>>>>> a0e1a537113da3d2ef3763936276187829e35140
         }
     };
 
