@@ -1,0 +1,3 @@
+
+using gcc : 4.8 : /opt/bin/g++ : <cxxflags>-std=c++11 ; #<cxxflags>-ftemplate-depth=256 ;
+

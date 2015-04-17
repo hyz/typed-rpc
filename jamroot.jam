@@ -1,0 +1,28 @@
+import os ;
+
+BOOST_ROOT = [ os.environ BOOST_ROOT ] ;
+if ! $(BOOST_ROOT) { BOOST_ROOT = /opt/boost ; }
+
+use-project /boost : $(BOOST_ROOT) ;
+
+project
+    : requirements
+        <toolset>gcc:<cxxflags>"-Wno-unused-local-typedefs"
+        <toolset>gcc:<cxxflags>"-std=c++11"
+        <threading>multi
+        <include>$(BOOST_ROOT)
+    : default-build release
+    ;
+
+alias boost-libs
+    : /boost//system /boost//serialization /boost//filesystem /boost//timer /boost//program_options
+    : <link>static
+    ;
+
+exe example
+    : examples/example.cpp boost-libs
+    : <include>.
+    ;
+
+install bin : example ;
+
