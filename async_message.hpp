@@ -69,7 +69,8 @@ inline boost::asio::const_buffers_1 as_buffer(uint32_t const& n)
     return boost::asio::const_buffers_1(static_cast<void const*>(&n), sizeof(uint32_t));
 }
 
-namespace variadic {
+namespace variadic
+{
     template<typename> struct invoke;
     template<template<int...> class seq, int... Indices>
     struct invoke<seq<Indices...>>
@@ -110,7 +111,7 @@ namespace variadic {
         template <typename Tp, size_t N, size_t I=0>
         struct Tuple_load {
             template <typename Ar> static void sf(Ar& ar, Tp& tp) {
-                ar & std::get<I>(tp);
+                ar >> std::get<I>(tp);
                 Tuple_load<Tp,N,I+1>::sf(ar, tp);
             }
         }; 
@@ -118,28 +119,35 @@ namespace variadic {
             template <typename Ar> static void sf(Ar&, Tp&) {}
         };
 
-        template <typename Tp, typename... T> struct TVar_save;
-        template <typename Tp> struct TVar_save<Tp> {
-            template <typename Ar> static void sf(Ar&) {}
+        template <typename T, typename A> struct save_helper_ {
+            template <typename Ar> //&& std::is_convertible<A,T>::value
+            static typename std::enable_if<std::is_arithmetic<T>::value && std::is_arithmetic<A>::value, void>::type
+            save(Ar & ar, T a) {
+                ar << a; // converted save
+            }
         };
-        template <typename Tp, typename A, typename... T>
-        struct TVar_save<Tp,A,T...> {
-            BOOST_STATIC_ASSERT(std::tuple_size<Tp>::value==1+sizeof...(T));
-            template <typename Ar,typename A0,typename...T0>
-            static void sf(Ar & ar, A0&& a, T0&&... t) {
-                save_<typename std::tuple_element<0,Tp>::type>(ar, a);
-                TVar_save<typename pop_front<Tp>::type,T...>::sf(ar, std::forward<T0>(t)...);
+        template <typename T> struct save_helper_<T,T> {
+            template <typename Ar> static void save(Ar & ar, T const& a) {
+                ar << a;
             }
-            template <typename Tp0, typename Ar>
-            static typename std::enable_if<!std::is_same<Tp0,A>::value && std::is_arithmetic<Tp0>::value, void>::type
-                        //&& std::is_convertible<A,Tp0>::value
-            save_(Ar & ar, Tp0 a) {
-                ar & a; // converted save
+        };
+        template <typename Tp, typename... A> struct TVar_save;
+        template <typename Tp, typename A0>
+        struct TVar_save<Tp,A0> {
+            BOOST_STATIC_ASSERT(std::tuple_size<Tp>::value>0);
+            typedef typename std::tuple_element<0,Tp>::type T0;
+            typedef typename std::decay<A0>::type _A0;
+            template <typename Ar>
+            static void sf(Ar & ar, _A0 const & a0) {
+                save_helper_<T0,_A0>::save(ar, a0);
             }
-            template <typename Tp0, typename Ar>
-            static typename std::enable_if<std::is_same<Tp0,A>::value,void>::type
-            save_(Ar & ar, A const& a) {
-                ar & a;
+        };
+        template <typename Tp, typename A0, typename... A>
+        struct TVar_save<Tp,A0,A...> {
+            BOOST_STATIC_ASSERT(std::tuple_size<Tp>::value==1+sizeof...(A));
+            template <typename Ar> static void sf(Ar& ar, A0&& a0, A&&... a) {
+                TVar_save<Tp,A0>::template sf(ar, a0);
+                TVar_save<typename pop_front<Tp>::type,A...>::template sf(ar, std::forward<A>(a)...);
             }
         };
 
@@ -209,10 +217,10 @@ namespace variadic {
     template <typename Tab,typename Tp> 
     using Table_index = typename detail::Table_index<Tp,Tab,std::tuple_size<Tab>::value,0>::result_type;
 
-    template<typename Tp, typename Ar, typename... T>
-    inline void serialize_save(Ar & ar, T&&... t)
+    template<typename Tp, typename Ar, typename... A>
+    inline void serialize_save(Ar & ar, A&&... a)
     {
-        detail::TVar_save<Tp,typename std::decay<T>::type...>::template sf(ar, std::forward<T>(t)...);
+        detail::TVar_save<Tp,A...>::template sf(ar, std::forward<A>(a)...);
     }
 
     template<typename Ar, typename Tp>
@@ -639,7 +647,7 @@ struct Message_client_side
             uint8_t ix = Tpx::index;
             {
                 oArchive oa(vecbuf, boost::archive::no_header);
-                oa & ix;
+                oa << ix;
                 variadic::serialize_save<typename Tpx::first_type>(oa, std::forward<A>(a)...);
             }
             std::vector<char>& v = *this;
@@ -658,7 +666,7 @@ struct Message_server_side
     template <int Ix, typename Tuple>
     struct reply_pack
     {
-        boost::intrusive_ptr<Handle> ptr_; // // std::vector<char>* replybuf;
+        boost::intrusive_ptr<Handle> ptr; // // std::vector<char>* replybuf;
         template <typename... T>
         void operator()(T&&... t) const
         {
@@ -672,7 +680,7 @@ struct Message_server_side
             }
             std::vector<char> sbuf;
             vecbuf.swap_vector(sbuf);//(*replybuf);
-            ptr_->reply( std::move(sbuf) );
+            ptr->reply( std::move(sbuf) );
         }
     };
 
@@ -691,7 +699,7 @@ struct Message_server_side
             typedef void(*FType)(iArchive&, boost::intrusive_ptr<Handle>&);
             static FType lookup[sizeof...(Indices)] = { &Lup::spf_<Indices>... };
             uint8_t ix; {
-                ar & ix;
+                ar >> ix;
             }
             if (ix < sizeof...(Indices)) {
                 (*lookup[ix])(ar, h);
