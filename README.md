@@ -1,4 +1,4 @@
-# Typed rpc-linke messaging
+# Typed rpc-like messaging
 
 Async tcp request/response client & server, RPC-like.
 Mainly designed for exchange message between c++ server nodes.
