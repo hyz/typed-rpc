@@ -21,61 +21,72 @@ dependencies：
     * Boost.MSM
     * ...
 
-example:
+Echo example:
 =============
-message table
+Message table
 
 ```c++
-typedef Message::tag<struct M1> Msg_Time;
 
 typedef Message::Table<
-    Message::Pair< Request<Msg_Time>, Response<std::string> >
+    ___reserved___
+  , Message::Pair< Request<std::string>, Response<std::string> >
+  , Message::Pair< Request<int, std::string>, Response<int, std::string> >
+  , Message::Pair< Request<std::map<int,std::string>>, Response<std::map<int,std::string>> >
 > Message_table;
 ```
 
-server side
+Server side
 
 ```c++
 struct Message_handle : service_def<Message_handle,Message_table> //::: server-side
 {
-    template <typename Reply>
-    void operator()(Reply reply, Msg_Time) const
+    /// handle all Msg_echo message
+    template <typename Reply, typename...T>
+    void operator()(Reply reply, Msg_echo, T&& ...t) const
     {
-        time_t ct = time(0);
-        reply( std::string( ctime(&ct) ) );
+        reply(std::forward<T>(t)...);
     }
-
     Message_handle(ip::tcp::socket* s) : service_def<Message_handle,Message_table>(s) {}
 };
 ```
+
 client side
 
 ```c++
-std::string get_time(ip::address host, unsigned short port)
+template <typename Data>
+void echo_test(ip::address host, unsigned short port, int n_req, Data&& data)
 {
     boost::asio::io_service io_s;
-    Example::Client exc(io_s, host, port);
+    Echo::Client cli(io_s, host, port);
 
-    std::string ret;
-    auto save_time = [&ret](std::string& ts) {
-        ret = std::move(ts);
-    };
-    exc.async_do(save_time, Example::Msg_Time());
-    io_s.run();
-    return std::move(ret);
+    int n_rsp = 0; {
+        boost::timer::auto_cpu_timer t;
+        for (int i=0; i < n_req; ++i) {
+            cli.async_do([&n_rsp,&data](Data const& u) { ENSURE(u==data); ++n_rsp; }
+                    , data);
+        }
+        io_s.run();
+    }
+    ENSURE(n_req==n_rsp, n_req, n_rsp, data);
+
+    std::cout << n_req
+        <<" "<< cli.sockets.size()
+        <<"\n";
 }
 
 ```
 
-see example.cpp
+see examples/echo.cpp
 
 run test
 =============
 
     test with gcc-4.8.
     $
-    $ export BOOST_ROOT=boost_1_57_0
+    $ cd examples
+    $ export BOOST_ROOT=~/boost_1_57_0
     $ b2
-    $ bin/example -l 33333
-    $ bin/example 127.0.0.1 33333 -t
+    $ bin/echo -l 33333
+    $ bin/echo 127.0.0.1 33333
+    $
 

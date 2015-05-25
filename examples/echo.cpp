@@ -83,7 +83,7 @@ int server_main(ip::tcp::endpoint ep1)
 }
 
 template <typename Data>
-static void echo_test(ip::address host, unsigned short port, int n_req, Data&& data)
+void echo_test(ip::address host, unsigned short port, int n_req, Data&& data)
 {
     boost::asio::io_service io_s;
     Echo::Client cli(io_s, host, port);
