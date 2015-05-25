@@ -61,7 +61,7 @@ static void _ensure(bool y, T&&... t)
 
 static void handle_accept(Acceptor* a, boost::system::error_code ec)
 {
-    if (!ec) {
+    if (ec) {
         std::cerr << ec <<" "<< ec.message() <<"\n";
         return;
     }
