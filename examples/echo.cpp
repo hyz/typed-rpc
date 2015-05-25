@@ -15,6 +15,7 @@ using Message::Response;
 
 typedef Message::Table<
     ___reserved___
+  , Message::Pair< Request<int>, Response<int> >
   , Message::Pair< Request<std::string>, Response<std::string> >
   , Message::Pair< Request<int, std::string>, Response<int, std::string> >
   , Message::Pair< Request<std::map<int,std::string>>, Response<std::map<int,std::string>> >
@@ -24,7 +25,7 @@ struct Message_handle : service_def<Message_handle,Message_table> //::: server-s
 {
     /// handle all Msg_echo message
     template <typename Reply, typename...T>
-    void operator()(Reply reply, Msg_echo, T&& ...t) const
+    void operator()(Reply reply, T&& ...t) const
     {
         reply(std::forward<T>(t)...);
     }

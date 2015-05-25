@@ -19,10 +19,10 @@ alias boost-libs
     : <link>static
     ;
 
-exe example
-    : examples/example.cpp boost-libs
+exe echo
+    : examples/echo.cpp boost-libs
     : <include>.
     ;
 
-install bin : example ;
+install bin : echo ;
 
