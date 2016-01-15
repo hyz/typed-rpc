@@ -5,10 +5,9 @@ Mainly designed for exchange message between c++ server nodes.
 
 features:
 =========
-    * no protocol required, transfer native cpp datastructs, such as list, map etc.
-    * table declared exchange data
-    * network transparent.
-    * simple, single header only file.
+    * define protocols in native c++ table
+    * transfer native cpp data-structs, such as list, map etc.
+    * C/S(Request/Response) Model
 
 dependencies：
 =============
@@ -40,9 +39,9 @@ Server side
 ```c++
 struct Message_handle : service_def<Message_handle,Message_table> //::: server-side
 {
-    /// handle all Msg_echo message
+    /// echo back all messages decl in Message_table
     template <typename Reply, typename...T>
-    void operator()(Reply reply, Msg_echo, T&& ...t) const
+    void operator()(Reply reply, T&& ...t) const
     {
         reply(std::forward<T>(t)...);
     }
@@ -59,19 +58,18 @@ void echo_test(ip::address host, unsigned short port, int n_req, Data&& data)
     boost::asio::io_service io_s;
     Echo::Client cli(io_s, host, port);
 
-    int n_rsp = 0; {
+    int n_rsp = 0;
+    {
+        auto handle_resp = [&n_rsp,&data](Data const& u) { ENSURE(u==data); ++n_rsp; };
         boost::timer::auto_cpu_timer t;
         for (int i=0; i < n_req; ++i) {
-            cli.async_do([&n_rsp,&data](Data const& u) { ENSURE(u==data); ++n_rsp; }
-                    , data);
+            cli.async_do(handle_resp , data);
         }
         io_s.run();
     }
     ENSURE(n_req==n_rsp, n_req, n_rsp, data);
 
-    std::cout << n_req
-        <<" "<< cli.sockets.size()
-        <<"\n";
+    std::cout << n_req <<" "<< cli.sockets.size() <<"\n";
 }
 
 ```
